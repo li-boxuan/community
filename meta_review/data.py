@@ -4,10 +4,13 @@ import json
 import logging
 from dateutil import parser
 
+from datetime import datetime
+import pytz
+
 from django.utils import timezone
 
 from community.git import get_org_name
-
+#
 from meta_review.models import Participant, Comment, Reaction
 
 
@@ -36,6 +39,7 @@ class MetaReviewHandler:
         :param content: Parsed JSON data
         :param date: The update date
         """
+        print('__init__ invoked', datetime.now(pytz.timezone('Hongkong')))
         self.logger = logging.getLogger(__name__)
         self.logger.info('this package is alive')
 
@@ -94,11 +98,11 @@ class MetaReviewHandler:
         """
         Scrape data, process and store in database
         """
-        print('load participants to memory')
+        print('load participants to memory', datetime.now(pytz.timezone('Hongkong')))
         self.__load_participants_to_memory()
-        print('load comments to memory')
+        print('load comments to memory', datetime.now(pytz.timezone('Hongkong')))
         self.__load_comments_to_memory()
-        print('load reactions to memory')
+        print('load reactions to memory', datetime.now(pytz.timezone('Hongkong')))
         self.__load_reactions_to_memory()
 
         print('dump participants to database')
@@ -134,6 +138,7 @@ class MetaReviewHandler:
         :param last_edited_at: Datetime
         :param comment: Comment object
         """
+        return
         author = comment.author
         reactions = comment.reaction_set.all()
 
@@ -206,10 +211,11 @@ class MetaReviewHandler:
         a) create Review objects if not exist in database
         b) fetch history data if exist in database
         """
-        self.logger.info('get or create reviews')
+        print('get or create reviews', datetime.now(pytz.timezone('Hongkong')), flush=True)
         created_cnt = 0
         existing_cnt = 0
         for key, comment in self.comments.items():
+            print('get or create', key, datetime.now(pytz.timezone('Hongkong')), flush=True)
             c, created = Comment.objects.get_or_create(
                 id=comment['id']
             )
@@ -239,6 +245,7 @@ class MetaReviewHandler:
         self.logger.info('number of newly created comment objects: %d '
                          'number of existing comment objects: %d'
                          % (created_cnt, existing_cnt))
+        print('load comments finishes', datetime.now(pytz.timezone('Hongkong')))
 
     def __load_reactions_to_memory(self):
         """
@@ -281,6 +288,7 @@ class MetaReviewHandler:
                          % (created_cnt, existing_cnt))
 
     def __update_time(self):
+        return
         """
         Update last_active_at attribute of each participant
 
@@ -330,6 +338,7 @@ class MetaReviewHandler:
                                      participant.last_active_at))
 
     def __update_score(self):
+        return
         """
         Calculate and update score of each participant using
         the following formula:
@@ -448,6 +457,7 @@ class MetaReviewHandler:
             participant.score += s
 
     def __update_rankings(self):
+        return
         """
         Calculate and update rankings based on scores by making
         use of Django built-in sorting method
@@ -496,6 +506,7 @@ class MetaReviewHandler:
             self.participants[participant.login] = participant
 
     def __update_weight_factors(self):
+        return
         """
         Based on history data and the current iteration, recalculate weight
         factors (to be used in the next iteration)
@@ -538,6 +549,7 @@ class MetaReviewHandler:
                 participant.weight_factor += 0.1
 
     def __dump_participants_to_database(self):
+        return
         """
         Dump participants data into Django database
         """
@@ -551,6 +563,7 @@ class MetaReviewHandler:
                     % (participant.login, ex))
 
     def __dump_comments_to_database(self):
+        return
         """
         Dump comments data into Django database
         """
@@ -564,6 +577,7 @@ class MetaReviewHandler:
                     % (comment.id, ex))
 
     def __dump_reactions_to_database(self):
+        return
         """
         Dump reactions data into Django database
         """
@@ -578,6 +592,7 @@ class MetaReviewHandler:
 
 
 def handle():
+    print('handle begins', datetime.now(pytz.timezone('Hongkong')))
     # load data from gh-board repo
     org_name = get_org_name()
 
@@ -586,13 +601,17 @@ def handle():
 
     logger = logging.getLogger(__name__)
 
+    print('issues url', issues_url)
     try:
         content = requests.get(issues_url, timeout=10)
+        print('content get', content)
     except ReadTimeout:
         logger.warning('Get issues from ' + issues_url +
                        ' failed. Try backup url.')
         issues_url = 'https://' + org_name + '-gh-board.netlify.com/issues.json'
+        print('time out!, try backup plan, issues_url', issues_url)
         content = requests.get(issues_url, timeout=10)
+        print('content get', content)
 
     try:
         parsed_json = content.json()
