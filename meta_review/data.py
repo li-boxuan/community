@@ -209,19 +209,37 @@ class MetaReviewHandler:
         self.logger.info('get or create reviews')
         created_cnt = 0
         existing_cnt = 0
+
+        # There are lots of comments and we have to use bulk_create
+        # to accelerate deploy process
+        old_comments = Comment.objects.all()
+        old_commments_set = set()
+        for old_comment in old_comments:
+            old_commments_set.add(old_comment.id)
+
+        new_comments = []
         for key, comment in self.comments.items():
-            c, created = Comment.objects.get_or_create(
-                id=comment['id']
-            )
-            if created:
-                self.logger.debug('review comment %s created'
-                                  % comment['id'])
-                created_cnt += 1
-            else:
+            # if it is an old comment, we skip it
+            if comment['id'] in old_commments_set:
                 self.logger.debug('review comment %s exists'
                                   % comment['id'])
                 existing_cnt += 1
+            else:
+                self.logger.debug('review comment %s is new'
+                                  % comment['id'])
+                new_comments.append(
+                    Comment(id=comment['id'])
+                )
+                created_cnt += 1
 
+        # use bulk create to speed up create process
+        Comment.objects.bulk_create(new_comments)
+
+        # load all comments again (old + new)
+        all_comments = Comment.objects.all()
+
+        for c in all_comments:
+            comment = self.comments[c.id]
             c.body = comment['bodyText']
             c.diff = comment['diffHunk']
             c.created_at = comment['createdAt']
@@ -234,7 +252,7 @@ class MetaReviewHandler:
             self.__check_comment_update(c.last_edited_at, c)
 
             # save into memory
-            self.comments[key] = c
+            self.comments[c.id] = c
 
         self.logger.info('number of newly created comment objects: %d '
                          'number of existing comment objects: %d'
