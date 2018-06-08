@@ -267,19 +267,35 @@ class MetaReviewHandler:
         self.logger.info('get or create reactions')
         created_cnt = 0
         existing_cnt = 0
-        for key, reaction in self.reactions.items():
-            r, created = Reaction.objects.get_or_create(
-                id=reaction['id']
-            )
-            if created:
-                self.logger.debug('reaction %s created'
-                                  % reaction['id'])
-                created_cnt += 1
-            else:
-                self.logger.debug('reaction %s exists'
-                                  % reaction['id'])
-                existing_cnt += 1
 
+        # There are lots of reactions and we have to use bulk_create
+        # to accelerate deploy process
+        old_reactions = Reaction.objects.all()
+        old_reactions_set = set()
+        for old_reaction in old_reactions:
+            old_reactions_set.add(old_reaction.id)
+
+        new_reactions = []
+        for key, reaction in self.reactions.items():
+            # if it is an old reaction, we skip it
+            if reaction['id'] in old_reactions_set:
+                self.logger.debug('reaction %s exists' % reaction['id'])
+                existing_cnt += 1
+            else:
+                self.logger.debug('reaction %s is new' % reaction['id'])
+                new_reactions.append(
+                    Reaction(id=reaction['id'])
+                )
+                created_cnt += 1
+
+        # use bulk create to speed up create process
+        Reaction.objects.bulk_create(new_reactions)
+
+        # laod all reactions again (old + new)
+        all_reactions = Reaction.objects.all()
+
+        for r in all_reactions:
+            reaction = self.reactions[r.id]
             r.created_at = reaction['createdAt']
             r.content = reaction['content']
             giver_login = reaction['user']['login']
@@ -292,7 +308,7 @@ class MetaReviewHandler:
             r.review = self.comments[comment_id]
 
             # save into memory
-            self.reactions[key] = r
+            self.reactions[r.id] = r
 
         self.logger.info('number of newly created reaction objects: %d '
                          'number of existing reaction objects: %d'
