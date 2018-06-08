@@ -593,8 +593,11 @@ class MetaReviewHandler:
         comments = []
         for key, comment in self.comments.items():
             comments.append(comment)
-        pool = ThreadPool(20)
-        pool.map(lambda x: x.save(), comments)
+        Comment.objects.all().delete()
+        Comment.objects.bulk_create(comments)
+
+        #pool = ThreadPool(20)
+        #pool.map(lambda x: x.save(), comments)
         #for key, comment in self.comments.items():
         #    try:
         #        comment.save()
@@ -608,13 +611,18 @@ class MetaReviewHandler:
         Dump reactions data into Django database
         """
         self.logger.info('dump reactions data into database')
+        reactions = []
         for key, reaction in self.reactions.items():
-            try:
-                reaction.save()
-            except Exception as ex:
-                self.logger.error(
-                    '\n\nSomething went wrong saving this reaction %s: %s'
-                    % (reaction.id, ex))
+            reactions.append(reaction)
+        Reaction.objects.all().delete()
+        Reaction.objects.bulk_create(reactions)
+        #for key, reaction in self.reactions.items():
+        #    try:
+        #        reaction.save()
+        #    except Exception as ex:
+        #        self.logger.error(
+        #            '\n\nSomething went wrong saving this reaction %s: %s'
+        #            % (reaction.id, ex))
 
 
 def handle():
