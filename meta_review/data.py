@@ -3,6 +3,7 @@ from requests.exceptions import ReadTimeout
 import json
 import logging
 from dateutil import parser
+from multiprocessing.dummy import Pool as ThreadPool
 
 from django.utils import timezone
 
@@ -589,13 +590,18 @@ class MetaReviewHandler:
         Dump comments data into Django database
         """
         self.logger.info('dump review comments data into database')
+        comments = []
         for key, comment in self.comments.items():
-            try:
-                comment.save()
-            except Exception as ex:
-                self.logger.error(
-                    '\n\nSomething went wrong saving this comment %s: %s'
-                    % (comment.id, ex))
+            comments.append(comment)
+        pool = ThreadPool(20)
+        pool.map(lambda x: x.save(), comments)
+        #for key, comment in self.comments.items():
+        #    try:
+        #        comment.save()
+        #    except Exception as ex:
+        #        self.logger.error(
+        #            '\n\nSomething went wrong saving this comment %s: %s'
+        #            % (comment.id, ex))
 
     def __dump_reactions_to_database(self):
         """
