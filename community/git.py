@@ -127,7 +127,6 @@ def get_parent_slug(url=None):
 
 def get_org_name():
     global _org_name
-    _org_name = 'coala'
     if _org_name:
         return _org_name
 
